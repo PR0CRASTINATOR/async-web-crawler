@@ -60,7 +60,28 @@ The generated `report.csv` includes:
 Creates `site_graph.png` showing:
 
 - Pages as nodes  
-- Internal links as edges  
+- Internal links as edges
+
+- Optional: Automate with Cron
+To run the crawler automatically every day at 9 AM:
+
+bash
+crontab -e
+
+Add:
+
+Code
+0 9 * * * cd /path/to/project && uv run main.py
+
+Project Structure
+Code
+.
+├── crawl.py
+├── main.py
+├── csv_report.py
+├── graph_viz.py
+├── README.md
+└── report.csv (generated)
 
 ---
 
