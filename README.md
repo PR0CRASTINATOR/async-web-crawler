@@ -1,16 +1,22 @@
 # Async Web Crawler with Graph Visualization & CSV Reporting
-
-This project is an asynchronous Python web crawler that:
+A fast, asynchronous Python web crawler with:
 
 - Crawls a website using asyncio + aiohttp  
 - Extracts H1 text, first paragraph, internal/external links, and images  
-- Matches up to 10 user‑provided search words  
+- Search‑word matching (up to 10 words)
 - Generates a CSV report with detailed page data  
 - Builds a graph visualization of the site structure  
 - Runs interactively with user prompts  
+- Interactive CLI prompts
+- Optional `--auto` mode for instant runs
+- Internal/external link extraction
+- Image extraction
+- CSV reporting
+- Graph visualization of site structure (site_graph.png)
+  - Nodes = pages
+  - Edges = internal links
 
-This project is great for learning:
-
+This project is ideal for learning async programming, scraping, link analysis, and building CLI tools.
 - Async programming  
 - Web scraping  
 - Link graph analysis  
@@ -19,22 +25,34 @@ This project is great for learning:
 
 ---
 
+
 ## 🚀 Features
 
-### ✔ Interactive CLI
+### ✔ Interactive Mode (default)
 When you run the crawler, it prompts you for:
-
+uv run main.py
 - Website URL  
 - Concurrency level  
 - Maximum pages to crawl  
 - Up to 10 search words  
 
-### ✔ Async crawling 
-Uses:
+### ✔ Auto Mode (`--auto`)
+Run instantly with saved defaults:
+uv run main.py  --auto
+- Defaults are defined at the top of `main.py`:
 
-- `asyncio`
-- `aiohttp`
-- Semaphores for concurrency control
+```python
+DEFAULT_URL = "https://example.com"
+DEFAULT_CONCURRENCY = 3
+DEFAULT_MAX_PAGES = 50
+DEFAULT_SEARCH_WORDS = ["python", "tutorial", "guide"]
+
+
+### Async Architecture
+    Powered by:
+    - asyncio
+    - aiohttp
+    - Semaphores for concurrency control
 
 ### ✔ Extracts:
 
@@ -62,17 +80,19 @@ Creates `site_graph.png` showing:
 - Pages as nodes  
 - Internal links as edges
 
-- Optional: Automate with Cron
-To run the crawler automatically every day at 9 AM:
+- 1. Main: Manual operation (interactive mode, prompts web page, concurrency, max pages, and upto 10 word search)
+  - uv run main.py
 
+- 2. Optional: Automate with Cron
+To run the crawler automatically every day at 9 AM_no prompts required
 bash
-crontab -e
+  crontab -e
+Add: Code
+  0 9 * * * cd /path/to/project && uv run main.py
 
-Add:
-
-Code
-0 9 * * * cd /path/to/project && uv run main.py
-
+- 3. Auto Mode 
+  - uv run main.py --auto   (auto mode)
+---
 Project Structure
 Code
 .
@@ -83,9 +103,7 @@ Code
 ├── README.md
 └── report.csv (generated)
 
----
-
-## 📦 Installation
+##  Installation
 
 Clone the repository:
 
@@ -93,17 +111,15 @@ Clone the repository:
 git clone https://github.com/PR0CRASTINATOR/async-web-crawler.git
 cd async-web-crawler
 pip install -r requirements.txt
+uv install
 
-## Requirements
+## Required Technologies Used 
 - Python 3.10+
 - uv (for running the project)
 - aiohttp
 - beautifulsoup4
-
-## Usage  unless fully upgraded already
-Run the crawler with:
-- uv run main.py <URL> <max_concurrency> <max_pages>  
-
-
+- asyncio
+- networkx
+- matplotlib
 
 
