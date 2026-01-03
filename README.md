@@ -1,38 +1,88 @@
-# Async Web Crawler
+# Async Web Crawler with Graph Visualization & CSV Reporting
 
-A fast, asynchronous web crawler built in Python. It scans internal links, collects metadata, and exports results to CSV.
-- Asynchronous crawling using `aiohttp` and `asyncio`
-- Crawls pages with controlled concurrency
-- CSV reporting
-- Internal link discovery
-- Extracts headings, paragraphs, links, and images
-- Normalizes URLs and avoids duplicates
-- Saves results into a CSV report
-- Internal link discovery
-- Error handling for failed requests
+This project is an asynchronous Python web crawler that:
 
+- Crawls a website using asyncio + aiohttp  
+- Extracts H1 text, first paragraph, internal/external links, and images  
+- Matches up to 10 user‑provided search words  
+- Generates a CSV report with detailed page data  
+- Builds a graph visualization of the site structure  
+- Runs interactively with user prompts  
+
+This project is great for learning:
+
+- Async programming  
+- Web scraping  
+- Link graph analysis  
+- CSV reporting  
+- CLI interaction  
+
+---
 
 ## 🚀 Features
 
+### ✔ Interactive CLI
+When you run the crawler, it prompts you for:
+
+- Website URL  
+- Concurrency level  
+- Maximum pages to crawl  
+- Up to 10 search words  
+
+### ✔ Async crawling 
+Uses:
+
+- `asyncio`
+- `aiohttp`
+- Semaphores for concurrency control
+
+### ✔ Extracts:
+
+- H1 text  
+- First paragraph  
+- Internal links  
+- External links  
+- Image URLs  
+
+### ✔ CSV Report
+The generated `report.csv` includes:
+
+- URL  
+- H1  
+- First paragraph  
+- Internal link count  
+- External link count  
+- Image count  
+- Matched search words  
+- Match count  
+
+### ✔ Graph Visualization
+Creates `site_graph.png` showing:
+
+- Pages as nodes  
+- Internal links as edges  
+
+---
 
 ## 📦 Installation
+
+Clone the repository:
+
 ```bash
 git clone https://github.com/PR0CRASTINATOR/async-web-crawler.git
 cd async-web-crawler
 pip install -r requirements.txt
 
-- 
 ## Requirements
 - Python 3.10+
 - uv (for running the project)
 - aiohttp
 - beautifulsoup4
 
-## Usage
+## Usage  unless fully upgraded already
 Run the crawler with:
-# Until changed for prompting, you must execute it with:
-  uv run main.py <URL> <max_concurrency> <max_pages>
+- uv run main.py <URL> <max_concurrency> <max_pages>  
 
-# after update, you will be prompted for these 3 things.
 
-# future updates will include word search prompt(s) 
+
+
