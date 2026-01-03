@@ -1,16 +1,40 @@
 import asyncio
 import aiohttp
+import logging
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 
+# ⭐ Graph visualization imports
+from graph_viz import build_graph, draw_graph
+
 # -----------------------------
-# Existing helper functions
+# Logging setup
+# -----------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s: %(message)s"
+)
+
+# -----------------------------
+# Helper functions
 # -----------------------------
 def normalize_url(url: str) -> str:
     parsed = urlparse(url)
     netloc = parsed.netloc.lower()
     path = parsed.path.rstrip("/")
     return netloc if path == "" else f"{netloc}{path}"
+
+def is_valid_http_url(url: str) -> bool:
+    """Reject mailto:, javascript:, anchors, and empty URLs."""
+    if not url:
+        return False
+    if url.startswith("#"):
+        return False
+    if url.startswith("mailto:"):
+        return False
+    if url.startswith("javascript:"):
+        return False
+    return True
 
 def get_h1_from_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
@@ -32,7 +56,7 @@ def get_urls_from_html(html: str, base_url: str):
     urls = []
     for a in soup.find_all("a"):
         href = a.get("href")
-        if href:
+        if href and is_valid_http_url(href):
             urls.append(urljoin(base_url, href))
     return urls
 
@@ -46,11 +70,24 @@ def get_images_from_html(html: str, base_url: str):
     return urls
 
 def extract_page_data(html: str, page_url: str):
+    all_links = get_urls_from_html(html, page_url)
+    domain = urlparse(page_url).netloc
+
+    internal = []
+    external = []
+
+    for link in all_links:
+        if urlparse(link).netloc == domain:
+            internal.append(link)
+        else:
+            external.append(link)
+
     return {
         "url": page_url,
         "h1": get_h1_from_html(html),
         "first_paragraph": get_first_paragraph_from_html(html),
-        "outgoing_links": get_urls_from_html(html, page_url),
+        "outgoing_links": internal,
+        "external_links": external,
         "image_urls": get_images_from_html(html, page_url)
     }
 
@@ -67,7 +104,6 @@ class AsyncCrawler:
         self.semaphore = asyncio.Semaphore(max_concurrency)
         self.session = None
 
-        # NEW FIELDS
         self.max_pages = max_pages
         self.should_stop = False
         self.all_tasks = set()
@@ -88,98 +124,90 @@ class AsyncCrawler:
     async def add_page_visit(self, normalized_url):
         async with self.lock:
 
-            # Stop immediately if crawler is shutting down
             if self.should_stop:
                 return False
 
-            # If already visited, skip
             if normalized_url in self.page_data:
                 return False
 
-            # If we hit max pages, stop everything
             if len(self.page_data) >= self.max_pages:
                 self.should_stop = True
-                print("Reached maximum number of pages to crawl.")
+                logging.warning("Reached maximum number of pages to crawl.")
 
-                # Cancel all running tasks
                 for task in self.all_tasks:
                     task.cancel()
 
                 return False
 
-            # Otherwise, mark as visited
             self.page_data[normalized_url] = None
             return True
 
     # -------------------------
-    # Async HTML fetch
+    # Async HTML fetch with retries
     # -------------------------
-    async def get_html(self, url: str) -> str:
-        async with self.session.get(
-            url,
-            headers={"User-Agent": "BootCrawler/1.0"},
-            timeout=10
-        ) as response:
+    async def get_html(self, url: str, retries=3, backoff=1.5) -> str:
+        for attempt in range(1, retries + 1):
+            try:
+                async with self.session.get(
+                    url,
+                    headers={"User-Agent": "BootCrawler/1.0"},
+                    timeout=aiohttp.ClientTimeout(total=8)
+                ) as response:
 
-            if response.status >= 400:
-                raise Exception(f"error status code: {response.status}")
+                    if response.status >= 400:
+                        raise Exception(f"HTTP {response.status}")
 
-            content_type = response.headers.get("Content-Type", "")
-            if "text/html" not in content_type:
-                raise Exception(f"invalid content type: {content_type}")
+                    content_type = response.headers.get("Content-Type", "")
+                    if "text/html" not in content_type:
+                        raise Exception(f"Invalid content type: {content_type}")
 
-            return await response.text()
+                    return await response.text()
+
+            except Exception as e:
+                logging.warning(f"[Attempt {attempt}/{retries}] Error fetching {url}: {e}")
+                if attempt == retries:
+                    logging.error(f"Giving up on {url}")
+                    return None
+                await asyncio.sleep(backoff * attempt)
 
     # -------------------------
     # Recursive async crawl
     # -------------------------
     async def crawl_page(self, current_url):
 
-        # Stop immediately if shutting down
         if self.should_stop:
             return
 
-        # Stay on same domain
         if urlparse(current_url).netloc != self.base_domain:
             return
 
         normalized = normalize_url(current_url)
 
-        # Skip if already visited or limit reached
         is_new = await self.add_page_visit(normalized)
         if not is_new:
             return
 
-        print(f"Crawling: {current_url}")
+        logging.info(f"Crawling: {current_url}")
 
         async with self.semaphore:
-            try:
-                html = await self.get_html(current_url)
-            except Exception as e:
-                print(f"Failed to fetch {current_url}: {e}")
+            html = await self.get_html(current_url)
+            if not html:
                 return
 
-        # Extract page data
         data = extract_page_data(html, current_url)
 
-        # Save page data safely
         async with self.lock:
             self.page_data[normalized] = data
 
-        # Crawl outgoing links
         tasks = []
         for url in data["outgoing_links"]:
             task = asyncio.create_task(self.crawl_page(url))
-
-            # Track task
             self.all_tasks.add(task)
 
-            # Ensure removal when done
             def remove_task(t):
                 self.all_tasks.discard(t)
 
             task.add_done_callback(remove_task)
-
             tasks.append(task)
 
         if tasks:
@@ -195,10 +223,22 @@ class AsyncCrawler:
         await self.crawl_page(self.base_url)
         return self.page_data
 
-
 # -----------------------------
 # Helper function for main.py
 # -----------------------------
 async def crawl_site_async(base_url, max_concurrency=1, max_pages=50):
     async with AsyncCrawler(base_url, max_concurrency, max_pages) as crawler:
-        return await crawler.crawl()
+        page_data = await crawler.crawl()
+
+    # ⭐ Build graph data from crawler results
+    links_dict = {
+        data["url"]: data["outgoing_links"]
+        for data in page_data.values()
+        if data is not None
+    }
+
+    # ⭐ Generate and save the graph image
+    G = build_graph(links_dict)
+    draw_graph(G, "site_graph.png")
+
+    return page_data

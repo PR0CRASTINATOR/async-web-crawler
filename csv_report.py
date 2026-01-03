@@ -1,23 +1,50 @@
 import csv
 
-def write_csv_report(page_data, filename="report.csv"):
-    fieldnames = [
-        "page_url",
-        "h1",
-        "first_paragraph",
-        "outgoing_link_urls",
-        "image_urls"
-    ]
+def write_csv_report(page_data, output_file="report.csv"):
+    """
+    Writes a CSV report with:
+    - URL
+    - H1 text
+    - First paragraph
+    - Internal link count
+    - External link count
+    - Image count
+    - Matched search words
+    - Match count
+    """
 
-    with open(filename, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
 
+        # Header row
+        writer.writerow([
+            "URL",
+            "H1",
+            "First Paragraph",
+            "Internal Link Count",
+            "External Link Count",
+            "Image Count",
+            "Matched Search Words",
+            "Match Count"
+        ])
+
+        # Data rows
         for page in page_data.values():
-            writer.writerow({
-                "page_url": page.get("url", ""),
-                "h1": page.get("h1", ""),
-                "first_paragraph": page.get("first_paragraph", ""),
-                "outgoing_link_urls": ";".join(page.get("outgoing_links", [])),
-                "image_urls": ";".join(page.get("image_urls", [])),
-            })
+            if page is None:
+                continue
+
+            matches = page.get("search_word_matches", [])
+            match_list = ", ".join(matches)
+
+            writer.writerow([
+                page.get("url", ""),
+                page.get("h1", ""),
+                page.get("first_paragraph", ""),
+                len(page.get("outgoing_links", [])),
+                len(page.get("external_links", [])),
+                len(page.get("image_urls", [])),
+                match_list,
+                len(matches)
+            ])
+
+    print(f"CSV report written to {output_file}")
